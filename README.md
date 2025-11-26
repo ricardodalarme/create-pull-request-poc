@@ -1,10 +1,15 @@
 # create-pull-request-poc
 
-A Proof of Concept repository demonstrating how to use [peter-evans/create-pull-request@v7](https://github.com/peter-evans/create-pull-request) GitHub Action to create pull requests with signed commits using a GitHub App.
+A Proof of Concept repository demonstrating how to use GitHub Actions to create pull requests with signed commits using a GitHub App.
 
 ## Overview
 
-This PoC verifies that commits can be signed using a GitHub App with the `peter-evans/create-pull-request@v7` action. When using a GitHub App token with `sign-commits: true`, commits are signed as `<application-name>[bot]` and appear as "Verified" on GitHub.
+This PoC verifies that commits can be signed using a GitHub App with two different GitHub Actions:
+
+1. **[peter-evans/create-pull-request@v7](https://github.com/peter-evans/create-pull-request)** - Creates pull requests with signed commits using `sign-commits: true`
+2. **[googleapis/release-please-action@v4](https://github.com/googleapis/release-please-action)** - Automates releases with Conventional Commit Messages using signed commits
+
+When using a GitHub App token, commits are signed as `<application-name>[bot]` and appear as "Verified" on GitHub.
 
 ## Setup
 
@@ -46,7 +51,7 @@ Ensure that GitHub Actions has permission to create pull requests:
 
 ## Usage
 
-### Manual Trigger
+### Workflow 1: Manual Trigger (Create PR with Signed Commits)
 
 1. Go to **Actions > Create PR with Signed Commits**
 2. Click "Run workflow"
@@ -58,6 +63,15 @@ The workflow will:
 2. Make a change to `updates.txt`
 3. Create a pull request with signed commits
 4. The commits will show as "Verified" because they are signed by the GitHub App
+
+### Workflow 2: Release Please (Automatic on Push to Main)
+
+This workflow runs automatically on every push to the `main` branch:
+
+1. Release Please analyzes commits using [Conventional Commits](https://www.conventionalcommits.org/) format
+2. When releasable changes are detected, it creates/updates a Release PR
+3. When the Release PR is merged, it creates a GitHub Release with the appropriate version tag
+4. All commits are signed using the GitHub App token
 
 ## Verification
 
@@ -76,6 +90,8 @@ The workflow outputs the following information:
 
 ## Key Configuration
 
+### peter-evans/create-pull-request
+
 The essential configuration in the workflow for signed commits:
 
 ```yaml
@@ -91,6 +107,25 @@ The essential configuration in the workflow for signed commits:
     sign-commits: true
 ```
 
+### release-please-action
+
+The essential configuration for Release Please with signed commits:
+
+```yaml
+- uses: actions/create-github-app-token@v2
+  id: generate-token
+  with:
+    app-id: ${{ secrets.APP_ID }}
+    private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+- uses: googleapis/release-please-action@v4
+  with:
+    token: ${{ steps.generate-token.outputs.token }}
+    release-type: simple
+```
+
+When using a GitHub App token instead of the default `GITHUB_TOKEN`, Release Please will create commits that are signed by the GitHub App.
+
 ## Notes
 
 - When `sign-commits: true` is used, the `committer` and `author` inputs are ignored
@@ -100,6 +135,9 @@ The essential configuration in the workflow for signed commits:
 ## References
 
 - [peter-evans/create-pull-request](https://github.com/peter-evans/create-pull-request)
+- [googleapis/release-please-action](https://github.com/googleapis/release-please-action)
+- [release-please](https://github.com/googleapis/release-please)
 - [Commit signature verification for bots](https://github.com/peter-evans/create-pull-request/blob/main/docs/concepts-guidelines.md#commit-signature-verification-for-bots)
 - [Authenticating with GitHub App tokens](https://github.com/peter-evans/create-pull-request/blob/main/docs/concepts-guidelines.md#authenticating-with-github-app-generated-tokens)
 - [actions/create-github-app-token](https://github.com/actions/create-github-app-token)
+- [Conventional Commits](https://www.conventionalcommits.org/)
