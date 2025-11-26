@@ -1,0 +1,54 @@
+name: Create PR with Signed Commits
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Message to add to the file'
+        required: false
+        default: 'Automated update'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-signed-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate GitHub App Token
+        uses: actions/create-github-app-token@v2
+        id: generate-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v4
+
+      - name: Make changes
+        run: |
+          echo "${{ github.event.inputs.message }} - $(date)" >> updates.txt
+
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+          sign-commits: true
+          commit-message: 'chore: automated update'
+          title: '[Signed] Automated PR'
+          body: |
+            This pull request was automatically created with signed commits.
+            
+            - Created by: peter-evans/create-pull-request@v7
+            - Commits are signed using GitHub App: ${{ secrets.APP_ID }}
+          branch: automated-updates
+          delete-branch: true
+          labels: automated
+
+      - name: Check outputs
+        if: ${{ steps.cpr.outputs.pull-request-number }}
+        run: |
+          echo "Pull Request Number - ${{ steps.cpr.outputs.pull-request-number }}"
+          echo "Pull Request URL - ${{ steps.cpr.outputs.pull-request-url }}"
+          echo "Commits Verified - ${{ steps.cpr.outputs.pull-request-commits-verified }}"
